@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- google fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700|Roboto:300,400,500,700,900&amp;subset=cyrillic" rel="stylesheet">
+
+  <!-- fonts -->
+  <link href="http://allfont.ru/allfont.css?fonts=american-retro" rel="stylesheet" type="text/css" />
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+  <!-- font-awesome -->
+  <link rel="stylesheet" href="css/font-awesome.min.css">
+
+  <!-- slick slider style -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.css" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick-theme.css" />
+
+  <!-- Reset -->
+  <link rel="stylesheet" href="css/reset.css">
+
+  <!-- style preloader -->
+  <link rel="stylesheet" href="css/preloader.css">
+
+  <!-- custom style -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <title> ZVEZDACAR</title>
+  <link rel="icon" href="img/icon-logo.png">
+
+  <style type="text/css">
+    /* Set a size for our map container, the Google Map will take up 100% of this container */
+
+    #map {
+      width: 100%;
+      height: 410px;
+    }
+
+    .info-window {
+      display: -webkit-flex;
+      display: -ms-flex;
+      display: flex;
+      color: #8b8b8b;
+    }
+
+    .info-window-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+    }
+
+    .info-window-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
+    }
+
+    .info-window-car {
+      font-size: 18px;
+      font-weight: 500;
+      color: #000;
+
+    }
+
+    .info-window-header {
+      margin-bottom: 10px;
+    }
+
+    .info-window-value {
+      font-size: 16px;
+      font-weight: 500;
+      color: #000;
+    }
+
+    .info-window-left {
+      margin-right: 16px;
+    }
+
+    .info-window-meta {
+      display: -webkit-flex;
+      display: -ms-flex;
+      display: flex;
+      margin-left: -5px;
+      margin-right: -5px;
+    }
+
+    .info-window-meta>* {
+      margin-left: 5px;
+      margin-right: 5px;
+    }
+  </style>
+
+  <!--
+            You need to include this script tag on any page that has a Google Map.
+
+            The following script tag will work when opening this example locally on your computer.
+            But if you use this on a localhost server or a live website you will need to include an API key.
+            Sign up for one here (it's free for small usage):
+                https://developers.google.com/maps/documentation/javascript/tutorial#api_key
+
+            After you sign up, use the following script tag with YOUR_GOOGLE_API_KEY replaced with your actual key.
+                <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY"></script>
+        -->
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCRwK86DqwXwjw-ZuP5UUKujlk_1vs2kmQ"></script>
+
+  <script type="text/javascript">
+    (function() {
+      // When the window has finished loading create our google map below
+      google.maps.event.addDomListener(window, 'load', init);
+
+
+      var url = '/cars.json';
+
+      function getCars(url) {
+        return new Promise((resolve, reject) => {
+
+          fetch(url)
+            .then(response => response.json())
+            .then(json => resolve(json.data.cars))
+            .catch(error => reject(error));
+
+        })
+
+      }
+
+      function init() {
+
+        var mapOptions = {};
+
+        var mapElement = document.getElementById('map');
+
+        var map = new google.maps.Map(mapElement, mapOptions);
+
+        var infowindow = new google.maps.InfoWindow();
+
+        var infoWindowContent = (car) => {
+          return `
+                      <div class="info-window">
+                        <div class="info-window-left">
+                          <div class="info-window-image">
+                            <img src="/icons/logo.jpg" alt="" />
+                          </div>
+                        </div>
+                        <div class="info-window-body">
+                          <div class="info-window-header">
+                            <div class="info-window-car">${car.mark} ${car.model}</div>
+                            <div class="info-window-address">${car.address ? car.address : ''}</div>
+                          </div>
+                          <div class="info-window-meta">
+                          ${car.fuelDistance ?
+                            `<div class="info-window-fuel">
+                              <div class="info-window-value">${car.fuelDistance}</div>
+                              <div class="info-window-label">осталось бензина</div>
+                            </div>`
+                            : ''}
+                            <div class="info-window-price">
+                              <div class="info-window-value">7 &#8381; / мин</div>
+                              <div class="info-window-label"> 2 &#8381; минута парковки</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    `
+        };
+
+        var image = {
+          url: '/icons/automobile.svg',
+          scaledSize: new google.maps.Size(30, 30),
+          origin: new google.maps.Point(0, 0),
+          anchor: new google.maps.Point(15, 25)
+        };
+
+        getCars(url)
+          .then(cars => {
+            var bounds = new google.maps.LatLngBounds();
+
+            for (i = 0; i < cars.length; i++) {
+              console.log(cars[i]);
+              var position = new google.maps.LatLng(cars[i].lat, cars[i].lon);
+              bounds.extend(position);
+
+              marker = new google.maps.Marker({
+                position: position,
+                map: map,
+                icon: image
+              });
+
+              google.maps.event.addListener(marker, 'click', (function(marker, i) {
+                return function() {
+                  infowindow.setContent(infoWindowContent(cars[i]));
+                  infowindow.open(map, marker);
+                }
+              })(marker, i));
+
+              map.fitBounds(bounds);
+
+            }
+
+          })
+      }
+    })()
+  </script>
+
+</head>
+
+<body>
+
+  <div class="preloader" id="page-preloader">
+    <div class="loader"></div>
+  </div>
+
+  <!-- HEADER START -->
+  <header class="header">
+    <div class="container-fluid">
+      <nav class="navbar navbar-expand-lg navbar-light d-flex align-items-center">
+        <a class="navbar-brand" href="javascript://0" onclick="slowScroll ('#home')" data-target="anchor">
+            <img src="img/logo.png" alt="logo">
+          </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+        <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
+          <ul class="navbar-nav d-flex justify-content-around">
+            <li class="nav-item text-bold active">
+              <a class="nav-link" href="javascript://0" onclick="slowScroll ('#home')" data-target="anchor">Главная</a>
+            </li>
+            <li class="nav-item text-bold">
+              <a class="nav-link" href="javascript://0" onclick="slowScroll ('#features')" data-target="anchor">Услуги</a>
+            </li>
+            <li class="nav-item text-bold">
+              <a class="nav-link" href="javascript://0" onclick="slowScroll ('#odds')" data-target="anchor">Преимущества</a>
+            </li>
+            <li class="nav-item text-bold">
+              <a class="nav-link" href="javascript://0" onclick="slowScroll ('#cars')" data-target="anchor">Машины</a>
+            </li>
+            <li class="nav-item text-bold">
+              <a class="nav-link" href="javascript://0" onclick="slowScroll ('#apps')" data-target="anchor">Приложение</a>
+            </li>
+            <li class="nav-item text-bold">
+              <a class="nav-link" href="javascript://0" onclick="slowScroll ('#contact')" data-target="anchor">Контакты</a>
+            </li>
+          </ul>
+          <div class="ml-auto header-numberphone d-flex flex-column">
+            <span class="text-bold">8(800)555-66-08</span>
+            <!-- <a href="#">Заказать звонок</a> -->
+          </div>
+        </div>
+      </nav>
+    </div>
+    <!-- / container -->
+  </header>
+  <!-- HEADER END -->
+  <!-- MAIN START -->
+  <main class="main">
+    <!-- BANNER START -->
+    <section class="banner" id="home">
+      <div class="inner">
+        <div class="container containers">
+          <div class="row">
+            <div class="col md-3"></div>
+            <div class="inner-content col-md-9">
+              <img src="img/inner-line.png" alt="line" class="line-inner">
+              <!-- / line-inner -->
+              <div class="wrapper-inner-content">
+                <div class="title-inner text-white">
+                  <h1>Каршеринговая<br>
+                      компания <span class="text-bold title-zvezda">Zvezda car</span></h1>
+                  <p class="default-text">Инновационный сервис аренды автомобиля в Московской области</p>
+                </div>
+                <!-- / title-inner -->
+                <div class="application">
+                  <div class="row-btn d-flex align-items-center">
+                    <!-- <p class="btn-app text-bold btn-app-reg">НАЧАТЬ РЕГИСТРАЦИЮ</p> -->
+                    <!-- / btn-app -->
+                    <a href="#" class="btn-app btn-app-store text-bold">
+                        <img src="img/App-Store.png" alt="App-Store">
+                      </a>
+                    <!-- / btn-app -->
+                    <a href="#" class="btn-app btn-app-store text-bold">
+                        <img src="img/app-gp.png" alt="App-Store">
+                      </a>
+                    <!-- / btn-app -->
+                  </div>
+                </div>
+                <!-- / application -->
+              </div>
+              <!-- / wrapper-inner-content -->
+            </div>
+            <!-- / inner-content -->
+          </div>
+        </div>
+        <!-- / container -->
+      </div>
+      <!-- / inner -->
+    </section>
+    <!-- BANNER END -->
+    <!-- ABOUT-PROJECT START -->
+    <section class="about-project">
+      <img src="img/kay-man.png" alt="man">
+      <div class="inner">
+        <div class="container-fluid">
+          <div class="inner-content text-left">
+            <div class="title-project">
+              <h2>первый каршеринговый<br>
+                    проект <span class="text-bold">регионального уровня</span></h2>
+            </div>
+            <!-- / title-project -->
+            <div class="text-ptoject default-text">
+              <p>Почему «Звезда» решила внедрить в области передовой опыт каршеринга европейских стран?<br><br>
+                <span class="text-bold">Суть каршеринга</span> - поминутная аренда автомобиля.<br><br> Такая услуга на современном этапе вышла в ряд самых популярных среди жителей больших городов, в довольно короткое время стала альтернативой личному
+                автомобилю - из-за сравнительно невысокой стоимости, обслуживания клиентов 24 часа в сутки 7 дней в неделю, отсутствия предварительной оплаты и залогов. <br><br> И главное - автомобиль управляется с помощью<br>
+                <span class="text-bold">мобильного приложения</span>. «Звезда» убеждена, что и жители области достойны такого уровня сервиса.</p>
+            </div>
+            <!-- / text-ptoject -->
+          </div>
+        </div>
+        <!-- / container -->
+      </div>
+      <!-- / inner -->
+    </section>
+    <!-- ABOUT-PROJECT END -->
+    <!-- FEATURES START -->
+    <section class="features" id="features">
+      <div class="inner">
+        <div class="container">
+          <div class="row">
+            <div class="col-lg-4 d-flex justify-content-end hand-row">
+              <div class="img-hand d-flex align-items-end">
+                <img src="img/phone-hand.png" alt="img">
+              </div>
+            </div>
+            <div class="col-md-12 col-lg-8 default-text">
+              <div class="inner-content text-white">
+                <h2 class="thin-text">каршеринг от  <span class="text-bold">zvezda car</span></h2><br><br>
+                <p>— это поминутная аренда автомобиля для внутриобластных и или коротких поездок на любой срок и на любое расстояние.</p><br><br>
+                <p>Если вы часто ездите по городу на общественном транспорте, если у вас есть водительское удостоверение, но временно отсутствует личный транспорт, если вам срочно надо добраться до вокзала, аэропорта и другие пункты назначения, воспользуйтесь
+                  поминутным прокатом авто. Это <span class="text-bold">в 2 раза дешевле</span>, чем заказать <span class="text-bold">такси</span><br> и во много раз <span class="text-bold">удобнее, чем в метро</span>.
+                </p><br><br>
+                <span class="title-list">Три составные поминутной аренды:</span>
+                <ul class="list-features text-bold">
+                  <li><img src="img/icon-1.png" alt="icon"><span>комфорт</span></li>
+                  <li><img src="img/icon-2.png" alt="icon"><span>выгода</span></li>
+                  <li><img src="img/icon-3.png" alt="icon"><span>мобильность</span></li>
+                </ul>
+                И главное - получить эту услугу вы можете в <span class="text-bold">любое время суток</span>.
+              </div>
+              <!-- inner-content -->
+            </div>
+          </div>
+        </div>
+        <!-- / container -->
+      </div>
+      <!-- / inner -->
+    </section>
+    <!-- FEATURES END -->
+    <!-- ODDS START -->
+    <section class="odds" id="odds">
+      <div class="inner">
+        <div class="container">
+          <div class="inner-content">
+            <div class="title-odds text-center">
+              <h2>
+                  <span class="text-bold">Сделайте шаг к мобильности!</span><br>
+                  Ощутите качество поминутной<br>
+                  аренды автомобилей <span class="text-bold">«Звезды»!</span>
+                </h2>
+            </div>
+            <!-- / title-odds -->
+            <div class="text-features text-center">
+              <p class="default-text"><span class="text-bold">Преимущества</span> первого каршерингового проекта в Московской области:</p>
+            </div>
+            <!-- / text-features -->
+            <div class="star-features d-flex flex-column">
+              <div class="tex-red-star ml-auto">
+                <p>
+                  Присоединяйтесь,<br> почувствуйте вкус свободы<br> передвижения автомобилем
+                </p>
+              </div>
+              <div class="star-img d-flex">
+                <img src="img/star-line-2.png" alt="star-line" class="m-auto">
+              </div>
+              <div class="text-star-features">
+                <div class="row">
+                  <div class="col-md-6 text-bold text-right row-item-star">
+                    <p>Быстрая и удобная регистрация</p><br><br><br><br>
+                    <p class="star-item-2">Свобода передвижения<br> по утвержденной территории</p><br><br><br><br><br><br>
+                    <p class="star-item-3">10-минутное бесплатное бронирование</p>
+                  </div>
+                  <div class="col-md-6 text-bold">
+                    <br><br>
+                    <p class="star-item">Поминутный и посуточный тариф</p><br><br><br><br><br>
+                    <p class="star-item-5 star-item">Цены ниже стоимости такси, проката автомобилей и <br> доступнее чем у конкурирующих фирм</p><br><br><br>
+                    <p class="star-item-6 star-item">Бесплатная парковка и бензин</p>
+                  </div>
+                </div>
+              </div>
+              <div class="text-star-features-sm">
+                <ul class="text-bold text-center">
+                  <li><i class="fa fa-star"></i>Быстрая и удобная регистрация</li>
+                  <li><i class="fa fa-star"></i>Свобода передвижения по утвержденной территории</li>
+                  <li><i class="fa fa-star"></i>10-минутное бесплатное бронирование</li>
+                  <li><i class="fa fa-star"></i>Поминутный и посуточный тариф</li>
+                  <li><i class="fa fa-star"></i>Цены ниже стоимости такси, проката автомобилей <br> и доступнее чем у конкурирующих фирм</li>
+                  <li><i class="fa fa-star"></i>Бесплатная парковка и бензин</li>
+                </ul>
+              </div>
+            </div>
+            <!-- / star-features -->
+            <div class="name-star text-center">
+              <span class="text-bold">ЗВЕЗДА</span>
+              <p class="text-bold">car sharing</p>
+            </div>
+            <!-- name-star -->
+            <div class="btn-star d-flex">
+              <a href="javascript://0" onclick="slowScroll ('#home')" class="btn-app-reg btn btn-app text-bold mr-auto ml-auto">Присоединиться</a>
+            </div>
+          </div>
+          <!-- / inner-content -->
+        </div>
+        <!-- / container -->
+      </div>
+      <!-- / inner -->
+    </section>
+    <!-- ODDS END -->
+    <!-- ABOUT US START -->
+    <section class="about-us" id="cars">
+      <div class="container">
+        <h2 class="title-about-us">
+            Воспользуйтесь услугами
+            <span class="text-bold">zvezda car</span>
+          </h2>
+        <!-- / title-about-us -->
+        <div class="card-items-slider responsive">
+          <div class="d-flex flex-column card-item">
+            <div class="card-img">
+              <img class="card-img-top" src="img/1.jpg" alt="Card image cap">
+            </div>
+            <div class="title-card">
+              <h3 class="text-bold">Solaris</h3>
+            </div>
+          </div>
+          <!-- / card item -->
+          <!-- <div class="d-flex flex-column card-item">
+              <div class="card-img">
+                <img class="card-img-top" src="img/2.jpg" alt="Card image cap">
+              </div>
+              <div class="title-card">
+              <h3 class="text-bold">KIA</h3>
+              <p>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Ducimus, iusto?</p>
+              </div>
+            </div> -->
+          <!-- / card item -->
+          <div class="d-flex flex-column card-item">
+            <div class="card-img">
+              <img class="card-img-top" src="img/3.jpg" alt="Card image cap">
+            </div>
+            <div class="title-card">
+              <h3 class="text-bold">Skoda Rapid</h3>
+              <!-- <p>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Ducimus, iusto?</p> -->
+            </div>
+          </div>
+          <!-- / card item -->
+          <div class="d-flex flex-column card-item">
+            <div class="card-img">
+              <img class="card-img-top" src="img/4.jpg" alt="Card image cap">
+            </div>
+            <div class="title-card">
+              <h3 class="text-bold">Volkswagen Polo</h3>
+            </div>
+          </div>
+          <!-- / card item -->
+          <div class="d-flex flex-column card-item">
+            <div class="card-img">
+              <img class="card-img-top" src="img/5.jpg" alt="Card image cap">
+            </div>
+            <div class="title-card">
+              <h3 class="text-bold">Kia Rio</h3>
+            </div>
+          </div>
+          <!-- / card item -->
+        </div>
+        <div class="title-price-list text-center">
+          <h2>Прайс лист</h2>
+        </div>
+        <div class="super-price text-center">
+          <h3 class="text-bold">Одна минута <span class="super-price-text">ВСЕГО</span> за 7руб.</h3>
+        </div>
+        <div class="wrapper-price-list d-flex flex-column align-items-center">
+          <ul class="list-price m-auto">
+            <li><i class="fa fa-star-half"></i>1 час 360 <span>руб</span></li>
+            <li><i class="fa fa-star-half-empty"></i>6 часов 1 440 <span>руб</span></li>
+            <li><i class="fa fa-star"></i>Cуточный тариф 1900 <span>руб</span>*</li>
+            <li><i class="fa fa-star-o"></i>бензин включен в стоимость</li>
+          </ul>
+          <p class="m-auto">*включено бесплатно 80 км пробега далее за каждый лишний км 7 руб/км</p>
+        </div>
+        <div class="wrapper-car">
+          <div class="row row-card">
+            <!-- <div class="col-lg-3 col-md-6 d-flex flex-column card-item">
+                <div class="card-img">
+                  <img class="card-img-top" src="img/kia.png" alt="Card image cap">
+                </div>
+                <div class="title-card">
+                <h3 class="text-bold">KIA</h3>
+                <p>Lorem ipsum dolor sit amet consectetur, adipisicing elit. Ducimus, iusto?</p>
+                </div>
+              </div> -->
+          </div>
+          <!-- / row -->
+        </div>
+        <!-- / wrapper -->
+        <p class="about-park default-text">Парк компании состоит из комфортабельных автомобилей -
+          <span class="text-bold">Volkswagen Polo,
+              Skoda Rapid, Hyundai Solaris, KIA Rio, Renault Logan</span>. В планах -расширение зоны присутствия, внедрение своей услуги в новые регионы, увеличение парка собственного автомобильного транспорта, а также усовершенствование технической
+          стороны сервиса, чтобы <span class="text-bold">каршеринг ZVEZDA CAR</span> с каждым днем становился еще более комфортным, прибыльным и выгодным и стал неотъемлемой частью транспортной региональной инфраструктуры.</p>
+      </div>
+      <div class="title-org text-center">
+        <h2>Все автомобили оборудованы<br>
+              <span class="text-bold">Кнопкой Стоп-Старт</span><br>
+              и <span class="text-bold">кабелем зарядки для смартфона</span>
+          </h2>
+      </div>
+      <!-- / title-org -->
+      <div class="organizer d-flex justify-content-center align-items-center">
+        <div class="org-item">
+          <img src="img/start.png" alt="organizer">
+        </div>
+        <div class="org-item">
+          <img src="img/recharging.png" alt="organizer">
+        </div>
+      </div>
+      <!-- / continer -->
+    </section>
+    <!-- ABOUT US END -->
+    <!-- default section -->
+    <div class="default-section">
+      <div class="container">
+        <div class="application">
+          <div class="row-btn d-flex align-items-center justify-content-center">
+            <a href="javascript://0" onclick="slowScroll ('#home')" class="btn-app text-bold btn-app-reg">НАЧАТЬ РЕГИСТРАЦИЮ</a>
+            <!-- / btn-app -->
+            <a href="#" class="btn-app btn-app-store text-bold">
+                <img src="img/App-Store.png" alt="App-Store">
+              </a>
+            <!-- / btn-app -->
+            <a href="#" class="btn-app btn-app-store text-bold">
+                <img src="img/app-gp.png" alt="App-Store">
+              </a>
+            <!-- / btn-app -->
+          </div>
+        </div>
+        <!-- / application -->
+      </div>
+      <!-- / cotainer -->
+    </div>
+    <!-- default section -->
+    <!-- APP-ZVEZDACAR START -->
+    <section class="app-zvezdacar" id="apps">
+      <div class="inner">
+        <div class="container">
+          <div class="inner-content">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="title-app-zvezda">
+                  <img src="img/ramka.png" alt="line" class="line-inner">
+                  <span>Оцените преимущества и экономичность</span>
+                  <h2 class="text-bold">каршеринга zvezda car,</h2>
+                  <p class="text-center">сравните его с городским такси<br> или арендой автомобиля<br></p>
+                  <span class="text-bold">- и Вы увидите существенную разницу!</span>
+                </div>
+                <div class="link-app">
+                  <p class="leter-space">
+                    <a href="#" class="text-bold">Скачайте приложение</a> и в свободное «плавание» вместе с каршеринговой компанией zvezda car.</p>
+                  <p>Всего за 5 до 8 рублей в минуту - в режиме поездки и 1.5- 2 рубля - в режиме парковки, в зависимости от автомобиля, вы на определенное время станете обладателем исправного, застрахованного автомобиля, которой в быстром и комфортном режиме
+                    доставит вас в намеченный пункт прибытия. Парковка, бензин, страховка, включены в стоимость.
+                  </p>
+                </div>
+              </div>
+              <!-- / col-md-6 -->
+            </div>
+            <!-- / row -->
+          </div>
+          <!-- / inner-content -->
+        </div>
+        <!-- / container -->
+      </div>
+      <!-- / inner -->
+    </section>
+    <!-- APP-ZVEZDACAR END -->
+    <!-- default section -->
+    <div class="default-section" id="contact">
+      <div class="container d-flex justify-content-center">
+        <div class="default-section-content d-flex align-items-center">
+          <img src="img/icon-home.png" alt="home">
+          <p class="text-bold">Московская область, Наро-Фоминский район, пос. Селятино,<br> ул. Спортивная, дом 1, около ТЦ "Емеля", башня, 2-й этаж</p>
+        </div>
+        <!-- / default-section-content -->
+      </div>
+      <!-- / cotainer -->
+    </div>
+    <!-- default section -->
+    <!-- INVESTOR START -->
+    <section class="investor">
+      <div class="container">
+
+      </div>
+    </section>
+    <!-- INVESTOR END -->
+    <!-- MAP START -->
+    <section class="section-map">
+      <!-- <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3194.3337842887418!2d36.98725112838067!3d55.519564383188964!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x46caa8bed76807a5%3A0x71911463a07015ad!2z0KHQv9C-0YDRgtC40LLQvdCw0Y8g0YPQuy4sIDEsINCh0LXQu9GP0YLQuNC90L4sINCc0L7RgdC60L7QstGB0LrQsNGPINC-0LHQuy4sINCg0L7RgdGB0LjRjywgMTQzMzk1!5e0!3m2!1sru!2sua!4v1519646964561" frameborder="0" style="border:0" allowfullscreen></iframe> -->
+      <div id="map"></div>
+    </section>
+    <!-- MAP END -->
+    <div class="default-section">
+      <div class="container d-flex flex-column justify-content-center">
+        <div class="default-section-content app-default d-flex">
+          <p class="text-bold m-auto">СКАЧАЙ ПРИЛОЖЕНИЕ</p>
+        </div>
+        <div class="application">
+          <div class="row-btn d-flex align-items-center justify-content-center">
+            <a href="#" class="btn-app btn-app-store text-bold">
+                <img src="img/App-Store.png" alt="App-Store">
+              </a>
+            <!-- / btn-app -->
+            <a href="#" class="btn-app btn-app-store text-bold">
+                <img src="img/app-gp.png" alt="App-Store">
+              </a>
+            <!-- / btn-app -->
+          </div>
+        </div>
+        <!-- / application -->
+      </div>
+      <!-- / cotainer -->
+    </div>
+    <!-- default section -->
+  </main>
+  <!-- MAIN END -->
+  <!-- FOOTER STAART -->
+  <footer class="footer">
+    <section class="footer-top">
+      <div class="container">
+        <div class="row ">
+          <div class="col-lg-3 col-md-12 d-flex flex-column align-items-center text-center">
+            <div class="logo-footer">
+              <img src="img/footer-logo.png" alt="logo">
+            </div>
+            <!-- / logo -->
+            <div class="footer-number text-bold text-white">
+              <span>8(800)555-66-08</span>
+              <span>info@zvezdacar.ru</span>
+            </div>
+          </div>
+          <!-- col-md-3 -->
+          <div class="col-lg-9 col-md-12 d-flex align-items-center">
+            <div class="text-footer">
+              <p>ZVEZDA CAR - поминутная аренда автомобилей в Московской области. Зарезервируйте автомобиль у сервиса и наслаждайся свободой передвижения в любое время суток.</p>
+              <p>Доверьтесь каршерингу - инновационному сервису, почувствуйте вкус современного, комфортного, выгодного поминутного проката автомобиля!</p>
+            </div>
+          </div>
+        </div>
+        <!-- / row -->
+      </div>
+      <!-- / container -->
+    </section>
+    <!-- / footer-top -->
+    <section class="footer-bottom">
+      <ul class="social-nav d-flex justify-content-center align-items-center">
+        <li class="social-nav-item">
+          <a href="https://facebook.com/zvezda.carsharing" class="fa fa-facebook" target="_blank"></a>
+        </li>
+        <!-- <li class="social-nav-item"><a href="#" class="fa fa-telegram"></a></li> -->
+        <li class="social-nav-item">
+          <a href="https://vk.com/zvezdacar" class="fa fa-vk" target="_blank"></a>
+        </li>
+        <li class="social-nav-item">
+          <a href="https://t.me/ZvezdaCarBot" target="_blank" class="icon-telegram"><img src="img/logo-tl.png" alt=""></a>
+        </li>
+        <li class="social-nav-item">
+          <a href="https://www.instagram.com/zvezdacarsharing/" class="fa fa-instagram" target="_blank"></a>
+        </li>
+      </ul>
+      <p class="copyright text-center"> <i class="fa fa-copyright"></i> <span class="text-bold">2018 zvezdacar.ru</span></p>
+    </section>
+  </footer>
+  <!-- FOOTER END -->
+
+  <!-- Optional JavaScript -->
+  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+
+
+  <!-- slick slider -->
+  <script src="https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/smoothscroll/1.4.6/SmoothScroll.js" integrity="sha256-QP9jW9rjYY19oJP89PuFUDCytn/y3+BEQyIG0KR1jw8=" crossorigin="anonymous"></script>
+  <!-- main js -->
+
+  <script src="js/preloader.js"></script>
+  <script src="js/main.js"></script>
+
+  <!-- чат -->
+  <script>
+    var __REPLAIN_ = '79a312e8-8f41-4d62-b824-3b24f0c91f6c';
+    (function(u) {
+      var s = document.createElement('script');
+      s.type = 'text/javascript';
+      s.async = true;
+      s.src = u;
+      var x = document.getElementsByTagName('script')[0];
+      x.parentNode.insertBefore(s, x);
+    })('https://widget.replain.cc/dist/client.js');
+  </script>
+</body>
+
+</html>
